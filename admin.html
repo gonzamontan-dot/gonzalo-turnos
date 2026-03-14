@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<link rel="stylesheet" href="style.css">
+<title>Panel Administrador</title>
+</head>
+
+<body>
+
+<h2>Panel Administrador</h2>
+
+<button onclick="verTurnos()">Ver turnos</button>
+
+<div id="lista"></div>
+
+<script>
+
+let turnos=JSON.parse(localStorage.getItem("turnos"))||{};
+
+function verTurnos(){
+
+let div=document.getElementById("lista");
+
+div.innerHTML="";
+
+for(let t in turnos){
+
+let p=document.createElement("p");
+
+p.innerText=t;
+
+div.appendChild(p);
+
+}
+
+}
+
+</script>
+
+</body>
+
+</html>
