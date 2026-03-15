@@ -94,3 +94,23 @@ window.open(
 location.reload();
 
 }
+
+import {
+collection,
+getDocs,
+deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+async function resetTurnos(){
+
+const snapshot = await getDocs(collection(db,"turnos"));
+
+snapshot.forEach(async (docu)=>{
+await deleteDoc(docu.ref);
+});
+
+alert("Todos los turnos fueron eliminados");
+
+location.reload();
+
+}
