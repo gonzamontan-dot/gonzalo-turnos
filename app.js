@@ -16,6 +16,8 @@ const horariosDiv=document.getElementById("horarios");
 
 fechaInput.addEventListener("change",mostrarHorarios);
 
+mostrarHorarios();
+
 function mostrarHorarios(){
 
 horariosDiv.innerHTML="";
@@ -62,69 +64,31 @@ alert("Horario seleccionado: "+h);
 
 }
 
-async function reservarTurno(info){
+function reservar(){
 
-let nombre = prompt("Ingresá tu nombre");
-let telefono = prompt("Ingresá tu teléfono");
+let nombre=document.getElementById("nombre").value;
 
-let fecha = info.dateStr;
+let telefono=document.getElementById("telefono").value;
 
-let hora = new Date(info.dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+let fecha=fechaInput.value;
 
-let turno = {
-nombre: nombre,
-telefono: telefono,
-fecha: fecha,
-hora: hora
-};
+let key=fecha+"-"+horaSeleccionada;
 
-await addDoc(collection(db,"turnos"), turno);
+turnosOcupados[key]=true;
 
-let mensaje = `Hola Gonzalo, reservé un turno
+localStorage.setItem("turnos",JSON.stringify(turnosOcupados));
+
+let mensaje=`Hola Gonzalo quiero reservar turno
 
 Nombre: ${nombre}
 Teléfono: ${telefono}
 Fecha: ${fecha}
-Hora: ${hora}`;
+Hora: ${horaSeleccionada}`;
 
-window.open(
-`https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`
-);
+let url=`https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`;
 
-location.reload();
+window.open(url);
 
-}
-
-import {
-collection,
-getDocs,
-deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-async function resetTurnos(){
-
-const snapshot = await getDocs(collection(db,"turnos"));
-
-snapshot.forEach(async (docu)=>{
-await deleteDoc(docu.ref);
-});
-
-alert("Todos los turnos fueron eliminados");
-
-location.reload();
+mostrarHorarios();
 
 }
-
-async function resetTurnos(){
-
-const snapshot = await getDocs(collection(db,"turnos"));
-
-snapshot.forEach(async (docu)=>{
-await deleteDoc(docu.ref);
-});
-
-alert("Agenda reiniciada");
-
-}
-
-
