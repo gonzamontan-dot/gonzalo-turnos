@@ -34,7 +34,7 @@ let fecha=fechaInput.value;
 
 if(!fecha) return;
 
-let dia=new Date(fecha).getDay();
+let dia=new Date(fecha+"T00:00").getDay();
 
 if(dia===0 || dia===6){
 
@@ -47,7 +47,9 @@ return;
 let horarios=[...horariosBase];
 
 if(dia===1 || dia===3 || dia===5){
+
 horarios.push(horarioExtra);
+
 }
 
 for(let h of horarios){
@@ -94,40 +96,4 @@ alert("Horario seleccionado: "+h);
 
 window.reservar = async function(){
 
-let nombre=document.getElementById("nombre").value;
-
-let telefono=document.getElementById("telefono").value;
-
-let fecha=fechaInput.value;
-
-if(!nombre || !telefono || !fecha || !horaSeleccionada){
-
-alert("Completa todos los datos");
-
-return;
-
-}
-
-await addDoc(collection(db,"turnos"),{
-
-nombre:nombre,
-telefono:telefono,
-fecha:fecha,
-hora:horaSeleccionada
-
-});
-
-let mensaje=`Hola Gonzalo quiero reservar turno
-
-Nombre: ${nombre}
-Teléfono: ${telefono}
-Fecha: ${fecha}
-Hora: ${horaSeleccionada}`;
-
-let url=`https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`;
-
-window.open(url);
-
-mostrarHorarios();
-
-}
+let nombre=document.getElementById("n
