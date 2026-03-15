@@ -2,49 +2,46 @@
 <html>
 
 <head>
-<meta charset="UTF-8">
-<title>Administrador Gonzalo Masoterapia</title>
+
+<title>Administrador - Gonzalo Masoterapia</title>
 
 <style>
 
 body{
-font-family: Arial;
+font-family:Arial;
+background:#f7f7f7;
 text-align:center;
-background:#f4f6fb;
-padding:30px;
 }
 
-h2{
-color:#1e88e5;
+.logo{
+width:180px;
+margin-top:20px;
+}
+
+.login{
+margin-top:100px;
+}
+
+input{
+padding:10px;
+font-size:18px;
 }
 
 button{
-padding:12px 20px;
-font-size:16px;
-margin:10px;
-border:none;
-border-radius:8px;
-background:#1e88e5;
-color:white;
+padding:10px 20px;
+font-size:18px;
 cursor:pointer;
-}
-
-button:hover{
-background:#1565c0;
+margin:10px;
 }
 
 .turno{
 background:white;
-padding:15px;
 margin:15px auto;
-max-width:400px;
+padding:15px;
+width:320px;
 border-radius:10px;
-box-shadow:0 2px 10px rgba(0,0,0,0.1);
-font-size:20px;
-}
-
-.reset{
-background:#e53935;
+box-shadow:0 2px 6px rgba(0,0,0,0.2);
+font-size:18px;
 }
 
 </style>
@@ -53,91 +50,124 @@ background:#e53935;
 
 <body>
 
-<h2>Agenda de Turnos</h2>
+<img src="logo.png" class="logo">
 
-<button onclick="cargarTurnos()">Actualizar agenda</button>
-<button class="reset" onclick="resetTurnos()">Resetear agenda</button>
+<h2>Administrador</h2>
 
-<div id="turnos"></div>
+<div id="login" class="login">
+
+<input type="password" id="pass" placeholder="Contraseña">
+<br>
+<button onclick="login()">Entrar</button>
+
+</div>
+
+<div id="panel" style="display:none">
+
+<h3>Agenda de turnos</h3>
+
+<input type="date" id="fecha">
+
+<button onclick="cargarTurnos()">Ver turnos</button>
+
+<div id="agenda"></div>
+
+</div>
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { db } from "./firebase.js";
 
 import {
-getFirestore,
 collection,
 getDocs,
+query,
+where,
 deleteDoc,
 doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+const passwordAdmin="gonzalo123";
 
-const firebaseConfig = {
+window.login=function(){
 
-apiKey: "TU_API_KEY",
-authDomain: "TU_PROYECTO.firebaseapp.com",
-projectId: "TU_PROYECTO",
-storageBucket: "TU_PROYECTO.appspot.com",
-messagingSenderId: "XXXX",
-appId: "XXXX"
+let pass=document.getElementById("pass").value;
 
-};
+if(pass===passwordAdmin){
 
-const app = initializeApp(firebaseConfig);
+document.getElementById("login").style.display="none";
+document.getElementById("panel").style.display="block";
 
-const db = getFirestore(app);
+}else{
 
+alert("Contraseña incorrecta");
 
-window.cargarTurnos = async function(){
+}
 
-let contenedor = document.getElementById("turnos");
+}
 
-contenedor.innerHTML="Cargando turnos...";
+window.cargarTurnos=async function(){
 
-const snapshot = await getDocs(collection(db,"turnos"));
+let fecha=document.getElementById("fecha").value;
 
-contenedor.innerHTML="";
+let agenda=document.getElementById("agenda");
 
-snapshot.forEach(docu=>{
+agenda.innerHTML="Cargando...";
 
-let turno = docu.data();
+const q=query(
+collection(db,"turnos"),
+where("fecha","==",fecha)
+);
 
-let div = document.createElement("div");
+const snapshot=await getDocs(q);
+
+agenda.innerHTML="";
+
+if(snapshot.empty){
+
+agenda.innerHTML="No hay turnos ese día";
+
+return;
+
+}
+
+snapshot.forEach(d=>{
+
+let turno=d.data();
+
+let div=document.createElement("div");
 
 div.className="turno";
 
-div.innerHTML = `
-<strong>${turno.nombre}</strong><br>
-📱 ${turno.telefono}<br>
-📅 ${turno.fecha}<br>
-⏰ ${turno.hora}
+div.innerHTML=`
+
+<strong>${turno.hora}</strong><br>
+
+👤 ${turno.nombre}<br>
+
+📱 ${turno.telefono}<br><br>
+
+<button onclick="cancelar('${d.id}')">Cancelar turno</button>
+
 `;
 
-contenedor.appendChild(div);
+agenda.appendChild(div);
 
 });
 
-};
+}
 
+window.cancelar=async function(id){
 
-window.resetTurnos = async function(){
+if(!confirm("Cancelar turno?")) return;
 
-if(!confirm("Eliminar todos los turnos?")) return;
+await deleteDoc(doc(db,"turnos",id));
 
-const snapshot = await getDocs(collection(db,"turnos"));
+alert("Turno cancelado");
 
-snapshot.forEach(async (d)=>{
+cargarTurnos();
 
-await deleteDoc(doc(db,"turnos",d.id));
-
-});
-
-alert("Agenda reiniciada");
-
-document.getElementById("turnos").innerHTML="";
-
-};
+}
 
 </script>
 
