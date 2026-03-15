@@ -62,31 +62,35 @@ alert("Horario seleccionado: "+h);
 
 }
 
-function reservar(){
+async function reservarTurno(info){
 
-let nombre=document.getElementById("nombre").value;
+let nombre = prompt("Ingresá tu nombre");
+let telefono = prompt("Ingresá tu teléfono");
 
-let telefono=document.getElementById("telefono").value;
+let fecha = info.dateStr;
 
-let fecha=fechaInput.value;
+let hora = new Date(info.dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-let key=fecha+"-"+horaSeleccionada;
+let turno = {
+nombre: nombre,
+telefono: telefono,
+fecha: fecha,
+hora: hora
+};
 
-turnosOcupados[key]=true;
+await addDoc(collection(db,"turnos"), turno);
 
-localStorage.setItem("turnos",JSON.stringify(turnosOcupados));
-
-let mensaje=`Hola Gonzalo quiero reservar turno
+let mensaje = `Hola Gonzalo, reservé un turno
 
 Nombre: ${nombre}
 Teléfono: ${telefono}
 Fecha: ${fecha}
-Hora: ${horaSeleccionada}`;
+Hora: ${hora}`;
 
-let url=`https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`;
+window.open(
+`https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`
+);
 
-window.open(url);
-
-mostrarHorarios();
+location.reload();
 
 }
