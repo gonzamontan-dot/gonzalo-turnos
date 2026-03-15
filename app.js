@@ -114,3 +114,17 @@ alert("Todos los turnos fueron eliminados");
 location.reload();
 
 }
+
+async function resetTurnos(){
+
+const snapshot = await getDocs(collection(db,"turnos"));
+
+snapshot.forEach(async (docu)=>{
+await deleteDoc(docu.ref);
+});
+
+alert("Agenda reiniciada");
+
+}
+
+
