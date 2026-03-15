@@ -2,20 +2,17 @@
 <html>
 
 <head>
-
-<title>Administrador - Gonzalo Masoterapia</title>
-
+<title>Administrador Gonzalo Masoterapia</title>
 <link rel="stylesheet" href="style.css">
-
 </head>
 
 <body>
 
-<h2>Agenda de Turnos</h2>
+<h2>Panel Administrador</h2>
 
 <button onclick="cargarTurnos()">Actualizar agenda</button>
 
-<div id="listaTurnos"></div>
+<div id="turnos"></div>
 
 <script type="module">
 
@@ -28,7 +25,7 @@ getDocs
 
 async function cargarTurnos(){
 
-let contenedor=document.getElementById("listaTurnos");
+let contenedor=document.getElementById("turnos");
 
 contenedor.innerHTML="";
 
@@ -38,24 +35,23 @@ snapshot.forEach(doc=>{
 
 let turno=doc.data();
 
-let card=document.createElement("div");
+let div=document.createElement("div");
 
-card.className="turno-card";
+div.style.fontSize="20px";
+div.style.margin="20px";
 
-card.innerHTML=`
+div.innerHTML=`
 <strong>${turno.nombre}</strong><br>
-📱 Tel: ${turno.telefono}<br>
-📅 Fecha: ${turno.fecha}<br>
-⏰ Hora: ${turno.hora}
+Tel: ${turno.telefono}<br>
+Fecha: ${turno.fecha}<br>
+Hora: ${turno.hora}
 `;
 
-contenedor.appendChild(card);
+contenedor.appendChild(div);
 
 });
 
 }
-
-cargarTurnos();
 
 </script>
 
