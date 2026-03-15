@@ -2,39 +2,60 @@
 <html>
 
 <head>
+
+<title>Administrador - Gonzalo Masoterapia</title>
+
 <link rel="stylesheet" href="style.css">
-<title>Panel Administrador</title>
+
 </head>
 
 <body>
 
-<h2>Panel Administrador</h2>
+<h2>Agenda de Turnos</h2>
 
-<button onclick="verTurnos()">Ver turnos</button>
+<button onclick="cargarTurnos()">Actualizar agenda</button>
 
-<div id="lista"></div>
+<div id="listaTurnos"></div>
 
-<script>
+<script type="module">
 
-let turnos=JSON.parse(localStorage.getItem("turnos"))||{};
+import { db } from "./firebase.js";
 
-function verTurnos(){
+import {
+collection,
+getDocs
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-let div=document.getElementById("lista");
+async function cargarTurnos(){
 
-div.innerHTML="";
+let contenedor=document.getElementById("listaTurnos");
 
-for(let t in turnos){
+contenedor.innerHTML="";
 
-let p=document.createElement("p");
+const snapshot=await getDocs(collection(db,"turnos"));
 
-p.innerText=t;
+snapshot.forEach(doc=>{
 
-div.appendChild(p);
+let turno=doc.data();
+
+let card=document.createElement("div");
+
+card.className="turno-card";
+
+card.innerHTML=`
+<strong>${turno.nombre}</strong><br>
+📱 Tel: ${turno.telefono}<br>
+📅 Fecha: ${turno.fecha}<br>
+⏰ Hora: ${turno.hora}
+`;
+
+contenedor.appendChild(card);
+
+});
 
 }
 
-}
+cargarTurnos();
 
 </script>
 
