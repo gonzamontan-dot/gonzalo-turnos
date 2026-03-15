@@ -53,3 +53,16 @@ cursor:pointer;
     .turno-card strong{
     font-size:22px;
     }
+          
+    .slot{
+        padding:20px;
+        border-radius:14px;
+        color:white;
+        font-size:18px;
+        box-shadow:0 8px 18px rgba(0,0,0,0.15);
+        transition:transform 0.2s;
+        }
+        
+        .slot:hover{
+        transform:scale(1.05);
+        }
