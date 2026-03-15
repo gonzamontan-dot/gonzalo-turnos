@@ -3,6 +3,7 @@
 
 <head>
 
+<meta charset="UTF-8">
 <title>Administrador Gonzalo Masoterapia</title>
 
 <link rel="stylesheet" href="style.css">
@@ -26,25 +27,25 @@ collection,
 getDocs
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const boton=document.getElementById("btnActualizar");
+const boton = document.getElementById("btnActualizar");
 
 boton.addEventListener("click", cargarTurnos);
 
 async function cargarTurnos(){
 
-let contenedor=document.getElementById("turnos");
+let contenedor = document.getElementById("turnos");
 
-contenedor.innerHTML="Cargando turnos...";
+contenedor.innerHTML = "Cargando turnos...";
 
-const snapshot=await getDocs(collection(db,"turnos"));
+const snapshot = await getDocs(collection(db,"turnos"));
 
-contenedor.innerHTML="";
+contenedor.innerHTML = "";
 
 snapshot.forEach(doc=>{
 
-let turno=doc.data();
+let turno = doc.data();
 
-let div=document.createElement("div");
+let div = document.createElement("div");
 
 div.style.fontSize="22px";
 div.style.margin="20px";
@@ -52,7 +53,7 @@ div.style.padding="15px";
 div.style.border="1px solid #ccc";
 div.style.borderRadius="10px";
 
-div.innerHTML=`
+div.innerHTML = `
 <strong>${turno.nombre}</strong><br>
 📱 Tel: ${turno.telefono}<br>
 📅 Fecha: ${turno.fecha}<br>
@@ -70,6 +71,3 @@ contenedor.appendChild(div);
 </body>
 
 </html>
-
-<button onclick="resetTurnos()">Resetear agenda</button>
-
