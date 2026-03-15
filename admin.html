@@ -9,7 +9,7 @@
 
 body{
 font-family:Arial;
-background:#f7f7f7;
+background:#f4f6f8;
 text-align:center;
 }
 
@@ -18,30 +18,52 @@ width:180px;
 margin-top:20px;
 }
 
+h2{
+margin-top:10px;
+}
+
 .login{
-margin-top:100px;
+margin-top:120px;
 }
 
 input{
 padding:10px;
 font-size:18px;
-}
-
-button{
-padding:10px 20px;
-font-size:18px;
-cursor:pointer;
 margin:10px;
 }
 
-.turno{
-background:white;
-margin:15px auto;
-padding:15px;
-width:320px;
-border-radius:10px;
-box-shadow:0 2px 6px rgba(0,0,0,0.2);
+button{
+padding:10px 18px;
+font-size:16px;
+cursor:pointer;
+}
+
+.agenda{
+display:grid;
+grid-template-columns:repeat(2,200px);
+gap:15px;
+justify-content:center;
+margin-top:30px;
+}
+
+.slot{
+padding:20px;
+border-radius:12px;
+color:white;
 font-size:18px;
+}
+
+.libre{
+background:#2ecc71;
+}
+
+.ocupado{
+background:#e74c3c;
+}
+
+.datos{
+font-size:14px;
+margin-top:8px;
 }
 
 </style>
@@ -57,20 +79,22 @@ font-size:18px;
 <div id="login" class="login">
 
 <input type="password" id="pass" placeholder="Contraseña">
+
 <br>
+
 <button onclick="login()">Entrar</button>
 
 </div>
 
 <div id="panel" style="display:none">
 
-<h3>Agenda de turnos</h3>
+<h3>Agenda</h3>
 
 <input type="date" id="fecha">
 
-<button onclick="cargarTurnos()">Ver turnos</button>
+<button onclick="cargarAgenda()">Ver agenda</button>
 
-<div id="agenda"></div>
+<div class="agenda" id="agenda"></div>
 
 </div>
 
@@ -89,6 +113,15 @@ doc
 
 const passwordAdmin="gonzalo123";
 
+const horariosBase=[
+"09:30",
+"11:00",
+"14:00",
+"15:30"
+];
+
+const horarioExtra="17:00";
+
 window.login=function(){
 
 let pass=document.getElementById("pass").value;
@@ -106,7 +139,7 @@ alert("Contraseña incorrecta");
 
 }
 
-window.cargarTurnos=async function(){
+window.cargarAgenda=async function(){
 
 let fecha=document.getElementById("fecha").value;
 
@@ -114,46 +147,74 @@ let agenda=document.getElementById("agenda");
 
 agenda.innerHTML="Cargando...";
 
-const q=query(
-collection(db,"turnos"),
-where("fecha","==",fecha)
-);
+let dia=new Date(fecha+"T00:00").getDay();
 
-const snapshot=await getDocs(q);
+if(dia===0 || dia===6){
 
-agenda.innerHTML="";
-
-if(snapshot.empty){
-
-agenda.innerHTML="No hay turnos ese día";
+agenda.innerHTML="No trabajas este día";
 
 return;
 
 }
 
-snapshot.forEach(d=>{
+let horarios=[...horariosBase];
 
-let turno=d.data();
+if(dia===1 || dia===3 || dia===5){
+
+horarios.push(horarioExtra);
+
+}
+
+agenda.innerHTML="";
+
+for(let h of horarios){
 
 let div=document.createElement("div");
 
-div.className="turno";
+const q=query(
+collection(db,"turnos"),
+where("fecha","==",fecha),
+where("hora","==",h)
+);
+
+const snapshot=await getDocs(q);
+
+if(snapshot.empty){
+
+div.className="slot libre";
+
+div.innerHTML=`${h}<br>Disponible`;
+
+}else{
+
+snapshot.forEach(d=>{
+
+let t=d.data();
+
+div.className="slot ocupado";
 
 div.innerHTML=`
+<strong>${h}</strong>
 
-<strong>${turno.hora}</strong><br>
+<div class="datos">
+👤 ${t.nombre}<br>
+📱 ${t.telefono}
+</div>
 
-👤 ${turno.nombre}<br>
+<br>
 
-📱 ${turno.telefono}<br><br>
-
-<button onclick="cancelar('${d.id}')">Cancelar turno</button>
-
+<button onclick="cancelar('${d.id}')">
+Cancelar
+</button>
 `;
+
+});
+
+}
 
 agenda.appendChild(div);
 
-});
+}
 
 }
 
@@ -165,7 +226,7 @@ await deleteDoc(doc(db,"turnos",id));
 
 alert("Turno cancelado");
 
-cargarTurnos();
+cargarAgenda();
 
 }
 
