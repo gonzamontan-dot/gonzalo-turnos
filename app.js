@@ -1,99 +1,126 @@
 import { db } from "./firebase.js";
-
 import {
-collection,
-getDocs,
-addDoc,
-query,
-where
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const telefonoNegocio="5492914496333";
+const telefonoNegocio = "5492914496333";
 
-const horariosBase=[
-"09:30",
-"11:00",
-"14:00",
-"15:30"
+const horariosBase = [
+  "09:30",
+  "11:00",
+  "14:00",
+  "15:30"
 ];
 
-const horarioExtra="17:00";
+const horarioExtra = "17:00";
 
-const fechaInput=document.getElementById("fecha");
-const horariosDiv=document.getElementById("horarios");
+let horaSeleccionada = "";
 
-let horaSeleccionada="";
+document.addEventListener("DOMContentLoaded", () => {
 
-fechaInput.addEventListener("change",mostrarHorarios);
+  const fechaInput = document.getElementById("fecha");
+  const horariosDiv = document.getElementById("horarios");
 
-async function mostrarHorarios(){
+  fechaInput.addEventListener("change", mostrarHorarios);
 
-horariosDiv.innerHTML="";
+  async function mostrarHorarios() {
 
-let fecha=fechaInput.value;
+    horariosDiv.innerHTML = "";
 
-if(!fecha) return;
+    let fecha = fechaInput.value;
 
-let dia=new Date(fecha+"T00:00").getDay();
+    if (!fecha) return;
 
-if(dia===0 || dia===6){
+    let dia = new Date(fecha + "T00:00").getDay();
 
-horariosDiv.innerHTML="No hay turnos disponibles este día";
+    if (dia === 0 || dia === 6) {
+      horariosDiv.innerHTML = "No hay turnos disponibles este día";
+      return;
+    }
 
-return;
+    let horarios = [...horariosBase];
 
-}
+    if (dia === 1 || dia === 3 || dia === 5) {
+      horarios.push(horarioExtra);
+    }
 
-let horarios=[...horariosBase];
+    for (let h of horarios) {
 
-if(dia===1 || dia===3 || dia===5){
+      const q = query(
+        collection(db, "turnos"),
+        where("fecha", "==", fecha),
+        where("hora", "==", h)
+      );
 
-horarios.push(horarioExtra);
+      const snapshot = await getDocs(q);
 
-}
+      if (snapshot.empty) {
 
-for(let h of horarios){
+        let div = document.createElement("div");
+        div.className = "slot";
+        div.innerText = h;
 
-let ocupado=false;
+        div.onclick = () => {
+          horaSeleccionada = h;
+          alert("Horario seleccionado: " + h);
+        };
 
-const q=query(
-collection(db,"turnos"),
-where("fecha","==",fecha),
-where("hora","==",h)
-);
+        horariosDiv.appendChild(div);
 
-const snapshot=await getDocs(q);
+      }
 
-if(!snapshot.empty){
-ocupado=true;
-}
+    }
 
-if(!ocupado){
+  }
 
-let div=document.createElement("div");
+  window.reservar = async function () {
 
-div.className="slot";
+    let nombre = document.getElementById("nombre").value;
+    let telefono = document.getElementById("telefono").value;
+    let fecha = fechaInput.value;
 
-div.innerText=h;
+    if (!nombre || !telefono || !fecha || !horaSeleccionada) {
+      alert("Completa todos los datos");
+      return;
+    }
 
-div.onclick=()=>seleccionar(h);
+    const check = query(
+      collection(db, "turnos"),
+      where("fecha", "==", fecha),
+      where("hora", "==", horaSeleccionada)
+    );
 
-horariosDiv.appendChild(div);
+    const existe = await getDocs(check);
 
-}
+    if (!existe.empty) {
+      alert("Ese horario ya fue reservado");
+      mostrarHorarios();
+      return;
+    }
 
-}
+    await addDoc(collection(db, "turnos"), {
+      nombre: nombre,
+      telefono: telefono,
+      fecha: fecha,
+      hora: horaSeleccionada
+    });
 
-}
+    let mensaje = `Hola Gonzalo quiero reservar turno
 
-function seleccionar(h){
+Nombre: ${nombre}
+Teléfono: ${telefono}
+Fecha: ${fecha}
+Hora: ${horaSeleccionada}`;
 
-horaSeleccionada=h;
+    let url = `https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`;
 
-alert("Horario seleccionado: "+h);
+    window.open(url);
 
-}
+    mostrarHorarios();
+  };
 
-window.reservar = async function(){
-
-let nombre=document.getElementById("n
+});
