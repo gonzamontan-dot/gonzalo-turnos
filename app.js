@@ -1,3 +1,13 @@
+import { db } from "./firebase.js";
+
+import {
+collection,
+getDocs,
+addDoc,
+query,
+where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
 const telefonoNegocio="5492914496333";
 
 const horariosBase=[
@@ -9,34 +19,54 @@ const horariosBase=[
 
 const horarioExtra="17:00";
 
-let turnosOcupados=JSON.parse(localStorage.getItem("turnos"))||{};
-
 const fechaInput=document.getElementById("fecha");
 const horariosDiv=document.getElementById("horarios");
 
+let horaSeleccionada="";
+
 fechaInput.addEventListener("change",mostrarHorarios);
 
-mostrarHorarios();
-
-function mostrarHorarios(){
+async function mostrarHorarios(){
 
 horariosDiv.innerHTML="";
 
 let fecha=fechaInput.value;
 
+if(!fecha) return;
+
 let dia=new Date(fecha).getDay();
+
+if(dia===0 || dia===6){
+
+horariosDiv.innerHTML="No hay turnos disponibles este día";
+
+return;
+
+}
 
 let horarios=[...horariosBase];
 
-if(dia==1||dia==3||dia==5){
+if(dia===1 || dia===3 || dia===5){
 horarios.push(horarioExtra);
 }
 
-horarios.forEach(h=>{
+for(let h of horarios){
 
-let key=fecha+"-"+h;
+let ocupado=false;
 
-if(!turnosOcupados[key]){
+const q=query(
+collection(db,"turnos"),
+where("fecha","==",fecha),
+where("hora","==",h)
+);
+
+const snapshot=await getDocs(q);
+
+if(!snapshot.empty){
+ocupado=true;
+}
+
+if(!ocupado){
 
 let div=document.createElement("div");
 
@@ -50,11 +80,9 @@ horariosDiv.appendChild(div);
 
 }
 
-});
-
 }
 
-let horaSeleccionada="";
+}
 
 function seleccionar(h){
 
@@ -64,7 +92,7 @@ alert("Horario seleccionado: "+h);
 
 }
 
-function reservar(){
+window.reservar = async function(){
 
 let nombre=document.getElementById("nombre").value;
 
@@ -72,11 +100,22 @@ let telefono=document.getElementById("telefono").value;
 
 let fecha=fechaInput.value;
 
-let key=fecha+"-"+horaSeleccionada;
+if(!nombre || !telefono || !fecha || !horaSeleccionada){
 
-turnosOcupados[key]=true;
+alert("Completa todos los datos");
 
-localStorage.setItem("turnos",JSON.stringify(turnosOcupados));
+return;
+
+}
+
+await addDoc(collection(db,"turnos"),{
+
+nombre:nombre,
+telefono:telefono,
+fecha:fecha,
+hora:horaSeleccionada
+
+});
 
 let mensaje=`Hola Gonzalo quiero reservar turno
 
