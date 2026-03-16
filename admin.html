@@ -9,34 +9,60 @@
 
 body{
 font-family:Arial;
-background:#f4f6f8;
+margin:0;
+background:#f2f5f8;
+display:flex;
+}
+
+/* columna izquierda */
+.sidebar{
+width:320px;
+background:white;
+height:100vh;
+overflow:auto;
+box-shadow:2px 0 10px rgba(0,0,0,0.1);
+padding:20px;
+}
+
+.sidebar h3{
+margin-top:0;
+}
+
+.turnoMes{
+border-bottom:1px solid #eee;
+padding:10px;
+font-size:15px;
+}
+
+/* contenido principal */
+.main{
+flex:1;
 text-align:center;
+padding:30px;
 }
 
 .logo{
-width:180px;
-margin-top:20px;
-}
-
-.login{
-margin-top:120px;
+width:160px;
+margin-bottom:10px;
 }
 
 input{
-padding:10px;
-font-size:18px;
+padding:12px;
+font-size:16px;
 margin:10px;
 }
 
 button{
-padding:10px 18px;
+padding:10px 20px;
 font-size:16px;
 cursor:pointer;
 }
 
+/* agenda visual */
+
 .agenda{
 display:grid;
-grid-template-columns:repeat(2,200px);
+grid-template-columns:repeat(2,220px);
 gap:15px;
 justify-content:center;
 margin-top:30px;
@@ -59,7 +85,7 @@ background:#e74c3c;
 
 .datos{
 font-size:14px;
-margin-top:8px;
+margin-top:6px;
 }
 
 </style>
@@ -68,23 +94,19 @@ margin-top:8px;
 
 <body>
 
-<img src="logo.png" class="logo">
+<div class="sidebar">
 
-<h2>Administrador</h2>
+<h3>Turnos del mes</h3>
 
-<div id="login" class="login">
-
-<input type="password" id="pass" placeholder="Contraseña">
-
-<br>
-
-<button onclick="login()">Entrar</button>
+<div id="listaMes"></div>
 
 </div>
 
-<div id="panel" style="display:none">
+<div class="main">
 
-<h3>Agenda</h3>
+<img src="logo.png" class="logo">
+
+<h2>Administrador</h2>
 
 <input type="date" id="fecha">
 
@@ -107,8 +129,6 @@ deleteDoc,
 doc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const passwordAdmin="gonzalo123";
-
 const horariosBase=[
 "09:30",
 "11:00",
@@ -118,20 +138,35 @@ const horariosBase=[
 
 const horarioExtra="17:00";
 
-window.login=function(){
+cargarMes();
 
-let pass=document.getElementById("pass").value;
+async function cargarMes(){
 
-if(pass===passwordAdmin){
+let lista=document.getElementById("listaMes");
 
-document.getElementById("login").style.display="none";
-document.getElementById("panel").style.display="block";
+lista.innerHTML="Cargando...";
 
-}else{
+const snapshot=await getDocs(collection(db,"turnos"));
 
-alert("Contraseña incorrecta");
+lista.innerHTML="";
 
-}
+snapshot.forEach(d=>{
+
+let t=d.data();
+
+let div=document.createElement("div");
+
+div.className="turnoMes";
+
+div.innerHTML=`
+<strong>${t.fecha}</strong><br>
+${t.hora} - ${t.nombre}<br>
+📱 ${t.telefono}
+`;
+
+lista.appendChild(div);
+
+});
 
 }
 
@@ -139,34 +174,14 @@ window.cargarAgenda=async function(){
 
 let fecha=document.getElementById("fecha").value;
 
-if(!fecha){
-
-alert("Elegí una fecha");
-
-return;
-
-}
-
 let agenda=document.getElementById("agenda");
 
-agenda.innerHTML="Cargando...";
-
 let dia=new Date(fecha+"T00:00").getDay();
-
-if(dia===0 || dia===6){
-
-agenda.innerHTML="No trabajas este día";
-
-return;
-
-}
 
 let horarios=[...horariosBase];
 
 if([1,3,5].includes(dia)){
-
 horarios.push(horarioExtra);
-
 }
 
 agenda.innerHTML="";
@@ -199,17 +214,12 @@ div.className="slot ocupado";
 
 div.innerHTML=`
 <strong>${h}</strong>
-
 <div class="datos">
-👤 ${t.nombre}<br>
+${t.nombre}<br>
 📱 ${t.telefono}
 </div>
-
 <br>
-
-<button onclick="cancelar('${d.id}')">
-Cancelar
-</button>
+<button onclick="cancelar('${d.id}')">Cancelar</button>
 `;
 
 });
@@ -231,6 +241,7 @@ await deleteDoc(doc(db,"turnos",id));
 alert("Turno cancelado");
 
 cargarAgenda();
+cargarMes();
 
 }
 
