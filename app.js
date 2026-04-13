@@ -9,118 +9,131 @@ import {
 
 const telefonoNegocio = "5492914496333";
 
-const horariosBase = [
-  "09:30",
-  "11:00",
-  "14:00",
-  "15:30"
-];
-
+const horariosBase = ["09:30", "11:00", "14:00", "15:30"];
 const horarioExtra = "17:00";
 
 let horaSeleccionada = "";
 
 document.addEventListener("DOMContentLoaded", () => {
-
   const fechaInput = document.getElementById("fecha");
   const horariosDiv = document.getElementById("horarios");
+  const nombreInput = document.getElementById("nombre");
+  const telefonoInput = document.getElementById("telefono");
+
+  // Evita elegir fechas pasadas
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dd = String(hoy.getDate()).padStart(2, "0");
+  fechaInput.min = `${yyyy}-${mm}-${dd}`;
 
   fechaInput.addEventListener("change", mostrarHorarios);
 
+  function parseFechaLocal(fechaStr) {
+    const [anio, mes, dia] = fechaStr.split("-").map(Number);
+    return new Date(anio, mes - 1, dia);
+  }
+
   async function mostrarHorarios() {
-
     horariosDiv.innerHTML = "";
+    horaSeleccionada = "";
 
-    let fecha = fechaInput.value;
-
+    const fecha = fechaInput.value;
     if (!fecha) return;
 
-    let dia = new Date(fecha + "T00:00").getDay();
+    const fechaObj = parseFechaLocal(fecha);
+    const diaSemana = fechaObj.getDay();
 
-    if (dia === 0 || dia === 6) {
+    // 0 domingo, 6 sábado
+    if (diaSemana === 0 || diaSemana === 6) {
       horariosDiv.innerHTML = "No hay turnos disponibles este día";
       return;
     }
 
-    let horarios = [...horariosBase];
-
-    if (dia === 1 || dia === 3 || dia === 5) {
+    const horarios = [...horariosBase];
+    if ([1, 3, 5].includes(diaSemana)) {
       horarios.push(horarioExtra);
     }
 
-    for (let h of horarios) {
-
+    for (const hora of horarios) {
       const q = query(
         collection(db, "turnos"),
         where("fecha", "==", fecha),
-        where("hora", "==", h)
+        where("hora", "==", hora)
       );
 
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-
-        let div = document.createElement("div");
+        const div = document.createElement("div");
         div.className = "slot";
-        div.innerText = h;
+        div.textContent = hora;
 
-        div.onclick = () => {
-          horaSeleccionada = h;
-          alert("Horario seleccionado: " + h);
-        };
+        div.addEventListener("click", () => {
+          horaSeleccionada = hora;
+
+          document.querySelectorAll(".slot").forEach(el => {
+            el.style.outline = "none";
+          });
+
+          div.style.outline = "3px solid #0b3d91";
+        });
 
         horariosDiv.appendChild(div);
-
       }
-
     }
 
+    if (horariosDiv.innerHTML === "") {
+      horariosDiv.innerHTML = "No hay horarios disponibles para esta fecha";
+    }
   }
 
   window.reservar = async function () {
-
-    let nombre = document.getElementById("nombre").value;
-    let telefono = document.getElementById("telefono").value;
-    let fecha = fechaInput.value;
+    const nombre = nombreInput.value.trim();
+    const telefono = telefonoInput.value.trim();
+    const fecha = fechaInput.value;
 
     if (!nombre || !telefono || !fecha || !horaSeleccionada) {
-      alert("Completa todos los datos");
+      alert("Completá nombre, teléfono, fecha y horario");
       return;
     }
 
-    const check = query(
+    const q = query(
       collection(db, "turnos"),
       where("fecha", "==", fecha),
       where("hora", "==", horaSeleccionada)
     );
 
-    const existe = await getDocs(check);
+    const existente = await getDocs(q);
 
-    if (!existe.empty) {
-      alert("Ese horario ya fue reservado");
-      mostrarHorarios();
+    if (!existente.empty) {
+      alert("Ese horario ya no está disponible");
+      await mostrarHorarios();
       return;
     }
 
     await addDoc(collection(db, "turnos"), {
-      nombre: nombre,
-      telefono: telefono,
-      fecha: fecha,
-      hora: horaSeleccionada
+      nombre,
+      telefono,
+      fecha,
+      hora: horaSeleccionada,
+      creadoEn: new Date().toISOString()
     });
 
-    let mensaje = `Hola Gonzalo quiero reservar turno
+    const mensaje = `Hola Gonzalo quiero reservar turno
 
 Nombre: ${nombre}
 Teléfono: ${telefono}
 Fecha: ${fecha}
 Hora: ${horaSeleccionada}`;
 
-    let url = `https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`;
+    const url = `https://wa.me/${telefonoNegocio}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, "_blank");
 
-    window.open(url);
+    nombreInput.value = "";
+    telefonoInput.value = "";
+    horaSeleccionada = "";
 
-    mostrarHorarios();
+    await mostrarHorarios();
   };
-
 });
