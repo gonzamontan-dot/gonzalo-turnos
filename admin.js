@@ -1,6 +1,3 @@
-import { db } from "./firebase.js";
-import { collection, getDocs, query, where, deleteDoc, doc, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
 const passwordAdmin = "gonzalo123";
 const horariosBase = ["09:30","11:00","14:00","15:30"];
 const horarioExtra = "17:00";
@@ -13,25 +10,59 @@ const listaMes = document.getElementById("listaMes");
 const agenda = document.getElementById("agenda");
 const fechaInput = document.getElementById("fecha");
 const btnVerAgenda = document.getElementById("btnVerAgenda");
+const countReservados = document.getElementById("countReservados");
+const countBloqueados = document.getElementById("countBloqueados");
+const countDisponibles = document.getElementById("countDisponibles");
+
+let db = null;
+let firebaseFns = null;
 
 function parseFechaLocal(fechaStr){
   const [anio, mes, dia] = fechaStr.split("-").map(Number);
   return new Date(anio, mes - 1, dia);
 }
 
-btnLogin.addEventListener("click", () => {
-  if(passInput.value === passwordAdmin){
-    loginWrap.style.display = "none";
-    panelWrap.style.display = "flex";
-    cargarMes();
-  }else{
+async function initFirebase(){
+  if(db && firebaseFns) return;
+
+  const firebaseModule = await import("./firebase.js");
+  const firestoreModule = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+
+  db = firebaseModule.db;
+  firebaseFns = firestoreModule;
+}
+
+btnLogin.addEventListener("click", async () => {
+  if(passInput.value !== passwordAdmin){
     alert("Contraseña incorrecta");
+    return;
+  }
+
+  loginWrap.style.display = "none";
+  panelWrap.style.display = "flex";
+
+  try{
+    await initFirebase();
+    await cargarMes();
+  }catch(error){
+    console.error("Error iniciando Firebase:", error);
+    alert("Entraste al panel, pero Firebase no cargó. Revisá firebase.js.");
   }
 });
 
-btnVerAgenda.addEventListener("click", cargarAgenda);
+btnVerAgenda.addEventListener("click", async () => {
+  try{
+    await initFirebase();
+    await cargarAgenda();
+  }catch(error){
+    console.error("Error abriendo agenda:", error);
+    alert("No se pudo cargar la agenda. Revisá firebase.js.");
+  }
+});
 
 async function cargarMes(){
+  const { collection, getDocs } = firebaseFns;
+
   listaMes.innerHTML = "Cargando...";
 
   try{
@@ -45,8 +76,9 @@ async function cargarMes(){
     snapshot.forEach(d => {
       const t = d.data();
       if(!t.fecha) return;
+
       const [anio, mes] = t.fecha.split("-").map(Number);
-      if(anio === anioActual && mes === mesActual){
+      if(anio === anioActual && mes === mesActual && t.estado !== "cancelado"){
         items.push({ id: d.id, ...t });
       }
     });
@@ -59,14 +91,25 @@ async function cargarMes(){
     }
 
     listaMes.innerHTML = "";
+
     items.forEach(t => {
       const div = document.createElement("div");
       div.className = "mes-item";
+
+      const estadoClass =
+        t.estado === "bloqueado"
+          ? "estado-bloqueado"
+          : t.estado === "realizado"
+          ? "estado-realizado"
+          : "estado-reservado";
+
       div.innerHTML = `
         <strong>${t.fecha}</strong><br>
         ${t.hora} - ${t.nombre}<br>
-        📱 ${t.telefono || "-"}
+        📱 ${t.telefono || "-"}<br>
+        <span class="estado-pill ${estadoClass}">${t.estado || "reservado"}</span>
       `;
+
       listaMes.appendChild(div);
     });
   }catch(error){
@@ -76,7 +119,10 @@ async function cargarMes(){
 }
 
 async function cargarAgenda(){
+  const { collection, getDocs, query, where } = firebaseFns;
+
   const fecha = fechaInput.value;
+
   if(!fecha){
     alert("Elegí una fecha");
     return;
@@ -85,8 +131,12 @@ async function cargarAgenda(){
   agenda.innerHTML = '<div class="mensaje">Cargando agenda...</div>';
 
   const dia = parseFechaLocal(fecha).getDay();
+
   if(dia === 0 || dia === 6){
     agenda.innerHTML = '<div class="mensaje">No trabajás este día</div>';
+    countReservados.textContent = "0";
+    countBloqueados.textContent = "0";
+    countDisponibles.textContent = "0";
     return;
   }
 
@@ -95,23 +145,39 @@ async function cargarAgenda(){
 
   agenda.innerHTML = "";
 
+  let reservados = 0;
+  let bloqueados = 0;
+  let disponibles = 0;
+
   for(const hora of horarios){
     const card = document.createElement("div");
 
     try{
-      const q = query(collection(db,"turnos"), where("fecha","==",fecha), where("hora","==",hora));
+      const q = query(
+        collection(db,"turnos"),
+        where("fecha","==",fecha),
+        where("hora","==",hora)
+      );
+
       const snapshot = await getDocs(q);
 
-      if(snapshot.empty){
+      const activos = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        if(data.estado !== "cancelado" && data.estado !== "realizado"){
+          activos.push({ id: d.id, ...data });
+        }
+      });
+
+      if(activos.length === 0){
+        disponibles++;
         card.className = "slot-admin libre";
         card.innerHTML = `
           <h3>${hora}</h3>
           <p>Disponible</p>
-
           <div class="manual">
-            <input class="nombre-manual" placeholder="Nombre del cliente" />
-            <input class="tel-manual" placeholder="Teléfono del cliente" />
-
+            <input class="nombre-manual" placeholder="Nombre del cliente">
+            <input class="tel-manual" placeholder="Teléfono del cliente">
             <div class="acciones">
               <button type="button" class="btn-reservar-manual" data-fecha="${fecha}" data-hora="${hora}">Reservar manual</button>
               <button type="button" class="secondary btn-bloquear" data-fecha="${fecha}" data-hora="${hora}">Bloquear</button>
@@ -119,19 +185,32 @@ async function cargarAgenda(){
           </div>
         `;
       }else{
-        snapshot.forEach(d => {
-          const t = d.data();
+        const t = activos[0];
+
+        if(t.estado === "bloqueado"){
+          bloqueados++;
+          card.className = "slot-admin bloqueado";
+          card.innerHTML = `
+            <h3>${hora}</h3>
+            <p><strong>Bloqueado</strong></p>
+            <p>📱 -</p>
+            <div class="acciones">
+              <button type="button" class="danger btn-cancelar" data-id="${t.id}">Desbloquear</button>
+            </div>
+          `;
+        }else{
+          reservados++;
           card.className = "slot-admin ocupado";
           card.innerHTML = `
             <h3>${hora}</h3>
             <p><strong>${t.nombre}</strong></p>
             <p>📱 ${t.telefono || "-"}</p>
-
             <div class="acciones">
-              <button type="button" class="danger btn-cancelar" data-id="${d.id}">Cancelar</button>
+              <button type="button" class="danger btn-cancelar" data-id="${t.id}">Cancelar</button>
+              <button type="button" class="secondary btn-realizado" data-id="${t.id}">Realizado</button>
             </div>
           `;
-        });
+        }
       }
     }catch(error){
       console.error("Error cargando horario:", hora, error);
@@ -141,13 +220,26 @@ async function cargarAgenda(){
 
     agenda.appendChild(card);
   }
+
+  countReservados.textContent = String(reservados);
+  countBloqueados.textContent = String(bloqueados);
+  countDisponibles.textContent = String(disponibles);
 }
 
 async function bloquear(fecha, hora){
+  const { collection, getDocs, query, where, addDoc } = firebaseFns;
+
   try{
     const check = query(collection(db,"turnos"), where("fecha","==",fecha), where("hora","==",hora));
     const existente = await getDocs(check);
-    if(!existente.empty){
+
+    let activo = false;
+    existente.forEach(d => {
+      const data = d.data();
+      if(data.estado !== "cancelado" && data.estado !== "realizado") activo = true;
+    });
+
+    if(activo){
       alert("Ese horario ya está ocupado o bloqueado");
       await cargarAgenda();
       return;
@@ -158,7 +250,11 @@ async function bloquear(fecha, hora){
       telefono:"-",
       fecha,
       hora,
-      creadoEn:new Date().toISOString()
+      estado:"bloqueado",
+      origen:"manual",
+      notas:"",
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString()
     });
 
     alert("Horario bloqueado");
@@ -171,8 +267,14 @@ async function bloquear(fecha, hora){
 }
 
 async function cancelar(id){
+  const { updateDoc, doc } = firebaseFns;
+
   try{
-    await deleteDoc(doc(db,"turnos",id));
+    await updateDoc(doc(db,"turnos",id), {
+      estado:"cancelado",
+      updatedAt:new Date().toISOString()
+    });
+
     alert("Turno cancelado");
     await cargarAgenda();
     await cargarMes();
@@ -182,7 +284,27 @@ async function cancelar(id){
   }
 }
 
+async function marcarRealizado(id){
+  const { updateDoc, doc } = firebaseFns;
+
+  try{
+    await updateDoc(doc(db,"turnos",id), {
+      estado:"realizado",
+      updatedAt:new Date().toISOString()
+    });
+
+    alert("Turno marcado como realizado");
+    await cargarAgenda();
+    await cargarMes();
+  }catch(error){
+    console.error("Error marcando realizado:", error);
+    alert("No se pudo actualizar el turno");
+  }
+}
+
 async function crearManual(fecha, hora, nombre, telefono, boton){
+  const { collection, getDocs, query, where, addDoc } = firebaseFns;
+
   if(!nombre){
     alert("Escribí el nombre del cliente");
     return;
@@ -195,7 +317,13 @@ async function crearManual(fecha, hora, nombre, telefono, boton){
     const check = query(collection(db,"turnos"), where("fecha","==",fecha), where("hora","==",hora));
     const existente = await getDocs(check);
 
-    if(!existente.empty){
+    let activo = false;
+    existente.forEach(d => {
+      const data = d.data();
+      if(data.estado !== "cancelado" && data.estado !== "realizado") activo = true;
+    });
+
+    if(activo){
       alert("Ese horario ya está ocupado");
       await cargarAgenda();
       return;
@@ -206,7 +334,11 @@ async function crearManual(fecha, hora, nombre, telefono, boton){
       telefono,
       fecha,
       hora,
-      creadoEn:new Date().toISOString()
+      estado:"reservado",
+      origen:"manual",
+      notas:"",
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString()
     });
 
     alert("Turno creado correctamente");
@@ -224,8 +356,17 @@ async function crearManual(fecha, hora, nombre, telefono, boton){
 agenda.addEventListener("click", async (e) => {
   const btnCancelar = e.target.closest(".btn-cancelar");
   if(btnCancelar){
-    if(confirm("¿Cancelar turno?")){
+    const texto = btnCancelar.textContent.includes("Desbloquear") ? "¿Desbloquear horario?" : "¿Cancelar turno?";
+    if(confirm(texto)){
       await cancelar(btnCancelar.dataset.id);
+    }
+    return;
+  }
+
+  const btnRealizado = e.target.closest(".btn-realizado");
+  if(btnRealizado){
+    if(confirm("¿Marcar turno como realizado?")){
+      await marcarRealizado(btnRealizado.dataset.id);
     }
     return;
   }
@@ -244,5 +385,3 @@ agenda.addEventListener("click", async (e) => {
     await crearManual(btnReservar.dataset.fecha, btnReservar.dataset.hora, nombre, telefono, btnReservar);
   }
 });
-
-cargarMes();
