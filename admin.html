@@ -1,8 +1,101 @@
 <!DOCTYPE html>
-<html>
-<head><title>Admin</title></head>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrador - Gonzalo Masoterapia</title>
+  <style>
+    body{
+      font-family:Arial, sans-serif;
+      margin:0;
+      padding:40px 20px;
+      background:#f4f6f8;
+      text-align:center;
+    }
+
+    .card{
+      max-width:500px;
+      margin:0 auto;
+      background:white;
+      padding:30px;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.12);
+    }
+
+    .logo{
+      width:220px;
+      max-width:80%;
+      height:auto;
+      margin-bottom:20px;
+    }
+
+    input{
+      width:100%;
+      padding:14px;
+      font-size:18px;
+      margin:10px 0;
+      border:1px solid #ccc;
+      border-radius:10px;
+      box-sizing:border-box;
+    }
+
+    button{
+      width:100%;
+      padding:14px;
+      font-size:18px;
+      border:none;
+      border-radius:10px;
+      background:#357ae8;
+      color:white;
+      cursor:pointer;
+      margin-top:10px;
+    }
+
+    button:hover{
+      background:#2466cf;
+    }
+
+    #panel{
+      display:none;
+      margin-top:20px;
+    }
+
+    .ok{
+      color:green;
+      font-size:18px;
+      margin-top:15px;
+    }
+  </style>
+</head>
 <body>
-<h2>Administrador</h2>
-<p>Panel funcionando</p>
+
+  <div class="card">
+    <img src="logo.png" class="logo" alt="Logo Gonzalo Masoterapia">
+    <h1>Administrador</h1>
+
+    <div id="login">
+      <input type="password" id="clave" placeholder="Ingresá la contraseña">
+      <button onclick="entrar()">Entrar</button>
+    </div>
+
+    <div id="panel">
+      <p class="ok">Entraste correctamente al administrador.</p>
+      <p>Ahora el archivo abre bien.</p>
+    </div>
+  </div>
+
+  <script>
+    function entrar(){
+      const clave = document.getElementById("clave").value;
+
+      if(clave === "gonzalo123"){
+        document.getElementById("login").style.display = "none";
+        document.getElementById("panel").style.display = "block";
+      } else {
+        alert("Contraseña incorrecta");
+      }
+    }
+  </script>
+
 </body>
 </html>
