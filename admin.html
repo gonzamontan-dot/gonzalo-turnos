@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administrador - Gonzalo Masoterapia</title>
   <style>
-    *{
-      box-sizing:border-box;
-    }
+    *{ box-sizing:border-box; }
 
     body{
       margin:0;
@@ -56,12 +54,8 @@
       margin:0 auto 18px;
     }
 
-    h1,h2,h3{
+    h2,h3{
       margin:0 0 16px;
-    }
-
-    .muted{
-      color:#6b7280;
     }
 
     input{
@@ -83,25 +77,13 @@
       color:white;
     }
 
-    button:hover{
-      background:#2466cf;
-    }
+    button:hover{ background:#2466cf; }
 
-    .danger{
-      background:#dc2626;
-    }
+    .danger{ background:#dc2626; }
+    .danger:hover{ background:#b91c1c; }
 
-    .danger:hover{
-      background:#b91c1c;
-    }
-
-    .secondary{
-      background:#4b5563;
-    }
-
-    .secondary:hover{
-      background:#374151;
-    }
+    .secondary{ background:#4b5563; }
+    .secondary:hover{ background:#374151; }
 
     .mes-item{
       background:white;
@@ -141,13 +123,8 @@
       box-shadow:0 10px 22px rgba(0,0,0,0.10);
     }
 
-    .libre{
-      background:#22c55e;
-    }
-
-    .ocupado{
-      background:#ef4444;
-    }
+    .libre{ background:#22c55e; }
+    .ocupado{ background:#ef4444; }
 
     .slot h3{
       margin:0 0 12px;
@@ -190,10 +167,7 @@
     }
 
     @media (max-width: 900px){
-      .panel{
-        grid-template-columns:1fr;
-      }
-
+      .panel{ grid-template-columns:1fr; }
       .sidebar{
         border-right:none;
         border-bottom:1px solid #e5e7eb;
@@ -203,13 +177,12 @@
   </style>
 </head>
 <body>
-
   <div class="panel-wrap">
     <div class="card panel">
       <aside class="sidebar">
         <img src="logo.png" class="logo" alt="Gonzalo Masoterapia">
         <h3>Turnos del mes</h3>
-        <div id="listaMes" class="muted">Cargando...</div>
+        <div id="listaMes">Cargando...</div>
       </aside>
 
       <main class="main">
@@ -217,7 +190,7 @@
 
         <div class="topbar">
           <input type="date" id="fecha">
-          <button onclick="cargarAgenda()">Ver agenda</button>
+          <button type="button" id="btnVerAgenda">Ver agenda</button>
         </div>
 
         <div id="agenda" class="agenda"></div>
@@ -243,14 +216,11 @@
     const listaMes = document.getElementById("listaMes");
     const agenda = document.getElementById("agenda");
     const fechaInput = document.getElementById("fecha");
+    const btnVerAgenda = document.getElementById("btnVerAgenda");
 
     function parseFechaLocal(fechaStr){
       const [anio, mes, dia] = fechaStr.split("-").map(Number);
       return new Date(anio, mes - 1, dia);
-    }
-
-    function horaId(hora){
-      return hora.replace(":", "-");
     }
 
     async function cargarMes(){
@@ -274,11 +244,7 @@
           }
         });
 
-        items.sort((a,b) => {
-          const aa = `${a.fecha} ${a.hora}`;
-          const bb = `${b.fecha} ${b.hora}`;
-          return aa.localeCompare(bb);
-        });
+        items.sort((a,b) => (`${a.fecha} ${a.hora}`).localeCompare(`${b.fecha} ${b.hora}`));
 
         if(items.length === 0){
           listaMes.innerHTML = `<div class="msg">No hay turnos cargados este mes</div>`;
@@ -286,7 +252,6 @@
         }
 
         listaMes.innerHTML = "";
-
         items.forEach(t => {
           const div = document.createElement("div");
           div.className = "mes-item";
@@ -298,12 +263,12 @@
           listaMes.appendChild(div);
         });
       }catch(error){
-        console.error(error);
+        console.error("Error cargando mes:", error);
         listaMes.innerHTML = `<div class="msg">No se pudieron cargar los turnos del mes</div>`;
       }
     }
 
-    window.cargarAgenda = async function(){
+    async function cargarAgenda(){
       const fecha = fechaInput.value;
 
       if(!fecha){
@@ -313,8 +278,7 @@
 
       agenda.innerHTML = `<div class="msg">Cargando agenda...</div>`;
 
-      const fechaObj = parseFechaLocal(fecha);
-      const dia = fechaObj.getDay();
+      const dia = parseFechaLocal(fecha).getDay();
 
       if(dia === 0 || dia === 6){
         agenda.innerHTML = `<div class="msg">No trabajás este día</div>`;
@@ -322,9 +286,7 @@
       }
 
       const horarios = [...horariosBase];
-      if([1,3,5].includes(dia)){
-        horarios.push(horarioExtra);
-      }
+      if([1,3,5].includes(dia)) horarios.push(horarioExtra);
 
       agenda.innerHTML = "";
 
@@ -341,27 +303,28 @@
           const snapshot = await getDocs(q);
 
           if(snapshot.empty){
-            const sufijo = horaId(hora);
-
             card.className = "slot libre";
             card.innerHTML = `
               <h3>${hora}</h3>
               <p>Disponible</p>
 
               <div class="manual">
-                <input id="nombre-${sufijo}" placeholder="Nombre del cliente">
-                <input id="tel-${sufijo}" placeholder="Teléfono del cliente">
+                <input class="nombre-manual" placeholder="Nombre del cliente">
+                <input class="tel-manual" placeholder="Teléfono del cliente">
 
                 <div class="acciones">
-                  <button onclick="crearManual('${fecha}','${hora}')">Reservar manual</button>
-                  <button class="secondary" onclick="bloquear('${fecha}','${hora}')">Bloquear</button>
+                  <button type="button" class="btn-reservar-manual" data-fecha="${fecha}" data-hora="${hora}">
+                    Reservar manual
+                  </button>
+                  <button type="button" class="secondary btn-bloquear" data-fecha="${fecha}" data-hora="${hora}">
+                    Bloquear
+                  </button>
                 </div>
               </div>
             `;
           }else{
             snapshot.forEach(d => {
               const t = d.data();
-
               card.className = "slot ocupado";
               card.innerHTML = `
                 <h3>${hora}</h3>
@@ -369,13 +332,15 @@
                 <p>📱 ${t.telefono || "-"}</p>
 
                 <div class="acciones">
-                  <button class="danger" onclick="cancelar('${d.id}')">Cancelar</button>
+                  <button type="button" class="danger btn-cancelar" data-id="${d.id}">
+                    Cancelar
+                  </button>
                 </div>
               `;
             });
           }
         }catch(error){
-          console.error(error);
+          console.error("Error cargando horario:", hora, error);
           card.className = "slot ocupado";
           card.innerHTML = `
             <h3>${hora}</h3>
@@ -385,23 +350,9 @@
 
         agenda.appendChild(card);
       }
-    };
+    }
 
-    window.cancelar = async function(id){
-      if(!confirm("¿Cancelar turno?")) return;
-
-      try{
-        await deleteDoc(doc(db,"turnos",id));
-        alert("Turno cancelado");
-        await cargarAgenda();
-        await cargarMes();
-      }catch(error){
-        console.error(error);
-        alert("No se pudo cancelar el turno");
-      }
-    };
-
-    window.bloquear = async function(fecha,hora){
+    async function bloquear(fecha, hora){
       try{
         const check = query(
           collection(db,"turnos"),
@@ -428,24 +379,24 @@
         await cargarAgenda();
         await cargarMes();
       }catch(error){
-        console.error(error);
+        console.error("Error bloqueando:", error);
         alert("No se pudo bloquear el horario");
       }
-    };
+    }
 
-    window.crearManual = async function(fecha,hora){
-      const sufijo = horaId(hora);
-      const nombreInput = document.getElementById(`nombre-${sufijo}`);
-      const telInput = document.getElementById(`tel-${sufijo}`);
-
-      if(!nombreInput){
-        alert("No se encontró el campo de nombre");
-        return;
+    async function cancelar(id){
+      try{
+        await deleteDoc(doc(db,"turnos",id));
+        alert("Turno cancelado");
+        await cargarAgenda();
+        await cargarMes();
+      }catch(error){
+        console.error("Error cancelando:", error);
+        alert("No se pudo cancelar el turno");
       }
+    }
 
-      const nombre = nombreInput.value.trim();
-      const telefono = telInput ? telInput.value.trim() : "";
-
+    async function crearManual(fecha, hora, nombre, telefono){
       if(!nombre){
         alert("Escribí el nombre del cliente");
         return;
@@ -478,10 +429,40 @@
         await cargarAgenda();
         await cargarMes();
       }catch(error){
-        console.error(error);
+        console.error("Error creando manual:", error);
         alert("No se pudo crear el turno");
       }
-    };
+    }
+
+    btnVerAgenda.addEventListener("click", cargarAgenda);
+
+    agenda.addEventListener("click", async (e) => {
+      const btnCancelar = e.target.closest(".btn-cancelar");
+      if(btnCancelar){
+        const id = btnCancelar.dataset.id;
+        if(confirm("¿Cancelar turno?")){
+          await cancelar(id);
+        }
+        return;
+      }
+
+      const btnBloquear = e.target.closest(".btn-bloquear");
+      if(btnBloquear){
+        const { fecha, hora } = btnBloquear.dataset;
+        await bloquear(fecha, hora);
+        return;
+      }
+
+      const btnReservar = e.target.closest(".btn-reservar-manual");
+      if(btnReservar){
+        const { fecha, hora } = btnReservar.dataset;
+        const card = btnReservar.closest(".slot");
+        const nombre = card.querySelector(".nombre-manual")?.value.trim() || "";
+        const telefono = card.querySelector(".tel-manual")?.value.trim() || "";
+
+        await crearManual(fecha, hora, nombre, telefono);
+      }
+    });
 
     cargarMes();
   </script>
