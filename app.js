@@ -1,9 +1,22 @@
 import { db } from "./firebase.js";
-import { collection, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  where
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const telefonoNegocio = "5492914496333";
 const horariosBase = ["09:30", "11:00", "14:00", "15:30"];
 const horarioExtra = "17:00";
+
+/*
+  OPCIONAL:
+  Si después armás un webhook en Make / Zapier / Cloud Function,
+  pegá la URL acá y se enviará un POST automático al reservar.
+*/
+const webhookUrl = "https://hook.us2.make.com/v1y9t25fj5br5xt4sxmms0qe70cnuz3i";
 
 let horaSeleccionada = "";
 
@@ -27,9 +40,25 @@ document.addEventListener("DOMContentLoaded", () => {
     return h * 60 + m;
   }
 
-  function hoyComoTexto() {
+  function hoyStrLocal() {
     const ahora = new Date();
     return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
+  }
+
+  async function notificarReservaWebhook(payload) {
+    if (!webhookUrl) return;
+
+    try {
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (error) {
+      console.error("Error enviando webhook:", error);
+    }
   }
 
   async function mostrarHorarios() {
@@ -56,17 +85,17 @@ document.addEventListener("DOMContentLoaded", () => {
       horarios.push(horarioExtra);
     }
 
-    let disponibles = 0;
-    const hoyStr = hoyComoTexto();
+    const hoy = hoyStrLocal();
     const ahora = new Date();
     const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
 
+    let disponibles = 0;
+
     try {
       for (const hora of horarios) {
-        // si es hoy y la hora ya pasó, no mostrar
-        if (fecha === hoyStr && horaAMinutos(hora) <= minutosActuales) {
-          continue;
-        }
+        const horarioPasado = fecha === hoy && horaAMinutos(hora) <= minutosActuales;
+
+        if (horarioPasado) continue;
 
         const q = query(
           collection(db, "turnos"),
@@ -146,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      await addDoc(collection(db, "turnos"), {
+      const payload = {
         nombre,
         telefono,
         fecha,
@@ -156,7 +185,11 @@ document.addEventListener("DOMContentLoaded", () => {
         notas: "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      await addDoc(collection(db, "turnos"), payload);
+
+      await notificarReservaWebhook(payload);
 
       const mensaje = `Hola Gonzalo quiero reservar turno
 
