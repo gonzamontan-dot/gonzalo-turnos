@@ -31,6 +31,16 @@ function parseFechaLocal(fechaStr) {
   return new Date(anio, mes - 1, dia);
 }
 
+function horaAMinutos(horaStr) {
+  const [h, m] = horaStr.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function hoyStrLocal() {
+  const ahora = new Date();
+  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
+}
+
 async function limpiarTurnosViejos() {
   const snapshot = await getDocs(collection(db, "turnos"));
 
@@ -86,7 +96,6 @@ async function cargarMes() {
       if (!t.fecha) return;
 
       const [anio, mes] = t.fecha.split("-").map(Number);
-
       if (anio === anioActual && mes === mesActual && t.estado !== "cancelado") {
         items.push({ id: d.id, ...t });
       }
@@ -150,6 +159,10 @@ async function cargarAgenda() {
   const horarios = [...horariosBase];
   if ([1, 3, 5].includes(dia)) horarios.push(horarioExtra);
 
+  const hoy = hoyStrLocal();
+  const ahora = new Date();
+  const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
+
   agenda.innerHTML = "";
 
   let reservados = 0;
@@ -158,6 +171,20 @@ async function cargarAgenda() {
 
   for (const hora of horarios) {
     const card = document.createElement("div");
+
+    const horarioPasado = fecha === hoy && horaAMinutos(hora) <= minutosActuales;
+
+    if (horarioPasado) {
+      bloqueados++;
+      card.className = "slot-admin bloqueado";
+      card.innerHTML = `
+        <h3>${hora}</h3>
+        <p><strong>Horario pasado</strong></p>
+        <p>Ya no disponible</p>
+      `;
+      agenda.appendChild(card);
+      continue;
+    }
 
     try {
       const q = query(

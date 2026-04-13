@@ -2,7 +2,7 @@ import { db } from "./firebase.js";
 import { collection, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const telefonoNegocio = "5492914496333";
-const horariosBase = ["09:30","11:00","14:00","15:30"];
+const horariosBase = ["09:30", "11:00", "14:00", "15:30"];
 const horarioExtra = "17:00";
 
 let horaSeleccionada = "";
@@ -22,11 +22,22 @@ document.addEventListener("DOMContentLoaded", () => {
     return new Date(anio, mes - 1, dia);
   }
 
+  function horaAMinutos(horaStr) {
+    const [h, m] = horaStr.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  function hoyComoTexto() {
+    const ahora = new Date();
+    return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
+  }
+
   async function mostrarHorarios() {
     horariosDiv.innerHTML = "";
     horaSeleccionada = "";
 
     const fecha = fechaInput.value;
+
     if (!fecha) {
       horariosDiv.innerHTML = '<div class="mensaje">Elegí una fecha para ver los horarios disponibles</div>';
       return;
@@ -41,25 +52,51 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const horarios = [...horariosBase];
-    if ([1,3,5].includes(diaSemana)) horarios.push(horarioExtra);
+    if ([1, 3, 5].includes(diaSemana)) {
+      horarios.push(horarioExtra);
+    }
 
     let disponibles = 0;
+    const hoyStr = hoyComoTexto();
+    const ahora = new Date();
+    const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
 
     try {
       for (const hora of horarios) {
-        const q = query(collection(db, "turnos"), where("fecha", "==", fecha), where("hora", "==", hora));
+        // si es hoy y la hora ya pasó, no mostrar
+        if (fecha === hoyStr && horaAMinutos(hora) <= minutosActuales) {
+          continue;
+        }
+
+        const q = query(
+          collection(db, "turnos"),
+          where("fecha", "==", fecha),
+          where("hora", "==", hora)
+        );
+
         const snapshot = await getDocs(q);
 
-        if (snapshot.empty) {
+        let ocupado = false;
+        snapshot.forEach((d) => {
+          const data = d.data();
+          if (data.estado === "reservado" || data.estado === "bloqueado") {
+            ocupado = true;
+          }
+        });
+
+        if (!ocupado) {
           disponibles++;
+
           const div = document.createElement("div");
           div.className = "slot";
           div.textContent = hora;
+
           div.addEventListener("click", () => {
             horaSeleccionada = hora;
-            document.querySelectorAll(".slot").forEach(el => el.classList.remove("seleccionado"));
+            document.querySelectorAll(".slot").forEach((el) => el.classList.remove("seleccionado"));
             div.classList.add("seleccionado");
           });
+
           horariosDiv.appendChild(div);
         }
       }
@@ -87,10 +124,23 @@ document.addEventListener("DOMContentLoaded", () => {
     btnReservar.textContent = "Guardando...";
 
     try {
-      const check = query(collection(db, "turnos"), where("fecha", "==", fecha), where("hora", "==", horaSeleccionada));
+      const check = query(
+        collection(db, "turnos"),
+        where("fecha", "==", fecha),
+        where("hora", "==", horaSeleccionada)
+      );
+
       const existe = await getDocs(check);
 
-      if (!existe.empty) {
+      let ocupado = false;
+      existe.forEach((d) => {
+        const data = d.data();
+        if (data.estado === "reservado" || data.estado === "bloqueado") {
+          ocupado = true;
+        }
+      });
+
+      if (ocupado) {
         alert("Ese horario ya fue reservado");
         await mostrarHorarios();
         return;
@@ -101,7 +151,11 @@ document.addEventListener("DOMContentLoaded", () => {
         telefono,
         fecha,
         hora: horaSeleccionada,
-        creadoEn: new Date().toISOString()
+        estado: "reservado",
+        origen: "online",
+        notas: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
 
       const mensaje = `Hola Gonzalo quiero reservar turno
