@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administrador - Gonzalo Masoterapia</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body class="admin-body">
+  <div class="fondo"></div>
+
   <div id="loginWrap" class="login-wrap">
     <div class="login-card">
-      <img src="logo.png" class="logo" alt="Gonzalo Masoterapia" />
+      <img src="logo.png" class="logo" alt="Gonzalo Masoterapia">
       <h1>Administrador</h1>
-      <p>Ingresá la contraseña para ver la agenda</p>
-      <input type="password" id="pass" placeholder="Contraseña" />
+      <p class="subtitulo">Ingresá la contraseña para ver la agenda</p>
+      <input type="password" id="pass" placeholder="Contraseña">
       <button type="button" id="btnLogin">Entrar</button>
     </div>
   </div>
@@ -20,16 +22,38 @@
   <div id="panelWrap" class="panel-wrap" style="display:none;">
     <div class="card panel">
       <aside class="sidebar">
-        <img src="logo.png" class="logo" alt="Gonzalo Masoterapia" />
+        <img src="logo.png" class="logo logo-admin" alt="Gonzalo Masoterapia">
         <h3>Turnos del mes</h3>
         <div id="listaMes">Cargando...</div>
       </aside>
 
       <main class="main">
-        <h2>Agenda de turnos</h2>
+        <div class="main-header">
+          <div>
+            <h2>Agenda de turnos</h2>
+            <p class="subtitulo">Control total de reservas, bloqueos y turnos manuales</p>
+          </div>
+
+          <div class="totales">
+            <div class="mini-card">
+              <span class="mini-label">Reservados</span>
+              <strong id="countReservados">0</strong>
+            </div>
+
+            <div class="mini-card">
+              <span class="mini-label">Bloqueados</span>
+              <strong id="countBloqueados">0</strong>
+            </div>
+
+            <div class="mini-card">
+              <span class="mini-label">Disponibles</span>
+              <strong id="countDisponibles">0</strong>
+            </div>
+          </div>
+        </div>
 
         <div class="topbar">
-          <input type="date" id="fecha" />
+          <input type="date" id="fecha">
           <button type="button" id="btnVerAgenda">Ver agenda</button>
         </div>
 
