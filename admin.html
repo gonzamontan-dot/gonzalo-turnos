@@ -1,1 +1,43 @@
-<!DOCTYPE html><html><body><h1>Admin</h1></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administrador - Gonzalo Masoterapia</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="admin-body">
+  <div id="loginWrap" class="login-wrap">
+    <div class="login-card">
+      <img src="logo.png" class="logo" alt="Gonzalo Masoterapia" />
+      <h1>Administrador</h1>
+      <p>Ingresá la contraseña para ver la agenda</p>
+      <input type="password" id="pass" placeholder="Contraseña" />
+      <button type="button" id="btnLogin">Entrar</button>
+    </div>
+  </div>
+
+  <div id="panelWrap" class="panel-wrap" style="display:none;">
+    <div class="card panel">
+      <aside class="sidebar">
+        <img src="logo.png" class="logo" alt="Gonzalo Masoterapia" />
+        <h3>Turnos del mes</h3>
+        <div id="listaMes">Cargando...</div>
+      </aside>
+
+      <main class="main">
+        <h2>Agenda de turnos</h2>
+
+        <div class="topbar">
+          <input type="date" id="fecha" />
+          <button type="button" id="btnVerAgenda">Ver agenda</button>
+        </div>
+
+        <div id="agenda" class="agenda"></div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
