@@ -16,7 +16,6 @@
       color:#1f2937;
     }
 
-    .login-wrap,
     .panel-wrap{
       min-height:100vh;
       display:flex;
@@ -26,24 +25,32 @@
     }
 
     .card{
-      width:min(1100px, 96vw);
+      width:min(1200px, 96vw);
       background:white;
       border-radius:22px;
       box-shadow:0 18px 40px rgba(0,0,0,0.12);
       overflow:hidden;
     }
 
-    .login-card{
-      width:min(560px, 94vw);
-      background:white;
-      border-radius:22px;
-      box-shadow:0 18px 40px rgba(0,0,0,0.12);
-      padding:36px 28px;
-      text-align:center;
+    .panel{
+      display:grid;
+      grid-template-columns:320px 1fr;
+      min-height:80vh;
+    }
+
+    .sidebar{
+      background:#f8fafc;
+      border-right:1px solid #e5e7eb;
+      padding:22px;
+      overflow:auto;
+    }
+
+    .main{
+      padding:24px;
     }
 
     .logo{
-      width:min(260px, 70vw);
+      width:min(240px, 70vw);
       height:auto;
       display:block;
       margin:0 auto 18px;
@@ -96,23 +103,6 @@
       background:#374151;
     }
 
-    .panel{
-      display:grid;
-      grid-template-columns:320px 1fr;
-      min-height:80vh;
-    }
-
-    .sidebar{
-      background:#f8fafc;
-      border-right:1px solid #e5e7eb;
-      padding:22px;
-      overflow:auto;
-    }
-
-    .main{
-      padding:24px;
-    }
-
     .mes-item{
       background:white;
       border:1px solid #e5e7eb;
@@ -132,6 +122,11 @@
       margin-bottom:24px;
     }
 
+    .topbar input{
+      max-width:220px;
+      margin:0;
+    }
+
     .agenda{
       display:grid;
       grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
@@ -142,7 +137,7 @@
       border-radius:16px;
       padding:18px;
       color:white;
-      min-height:180px;
+      min-height:210px;
       box-shadow:0 10px 22px rgba(0,0,0,0.10);
     }
 
@@ -209,17 +204,7 @@
 </head>
 <body>
 
-  <div id="loginWrap" class="login-wrap">
-    <div class="login-card">
-      <img src="logo.png" class="logo" alt="Gonzalo Masoterapia">
-      <h1>Administrador</h1>
-      <p class="muted">Ingresá la contraseña para ver la agenda</p>
-      <input type="password" id="pass" placeholder="Contraseña">
-      <button onclick="login()">Entrar</button>
-    </div>
-  </div>
-
-  <div id="panelWrap" class="panel-wrap" style="display:none;">
+  <div class="panel-wrap">
     <div class="card panel">
       <aside class="sidebar">
         <img src="logo.png" class="logo" alt="Gonzalo Masoterapia">
@@ -231,7 +216,7 @@
         <h2>Agenda de turnos</h2>
 
         <div class="topbar">
-          <input type="date" id="fecha" style="max-width:220px;">
+          <input type="date" id="fecha">
           <button onclick="cargarAgenda()">Ver agenda</button>
         </div>
 
@@ -252,12 +237,9 @@
       addDoc
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const passwordAdmin = "gonzalo123";
     const horariosBase = ["09:30","11:00","14:00","15:30"];
     const horarioExtra = "17:00";
 
-    const loginWrap = document.getElementById("loginWrap");
-    const panelWrap = document.getElementById("panelWrap");
     const listaMes = document.getElementById("listaMes");
     const agenda = document.getElementById("agenda");
     const fechaInput = document.getElementById("fecha");
@@ -267,16 +249,9 @@
       return new Date(anio, mes - 1, dia);
     }
 
-    window.login = function(){
-      const pass = document.getElementById("pass").value;
-      if(pass === passwordAdmin){
-        loginWrap.style.display = "none";
-        panelWrap.style.display = "flex";
-        cargarMes();
-      }else{
-        alert("Contraseña incorrecta");
-      }
-    };
+    function horaId(hora){
+      return hora.replace(":", "-");
+    }
 
     async function cargarMes(){
       listaMes.innerHTML = "Cargando...";
@@ -366,14 +341,16 @@
           const snapshot = await getDocs(q);
 
           if(snapshot.empty){
+            const sufijo = horaId(hora);
+
             card.className = "slot libre";
             card.innerHTML = `
               <h3>${hora}</h3>
               <p>Disponible</p>
 
               <div class="manual">
-                <input id="nombre-${hora}" placeholder="Nombre del cliente">
-                <input id="tel-${hora}" placeholder="Teléfono del cliente">
+                <input id="nombre-${sufijo}" placeholder="Nombre del cliente">
+                <input id="tel-${sufijo}" placeholder="Teléfono del cliente">
 
                 <div class="acciones">
                   <button onclick="crearManual('${fecha}','${hora}')">Reservar manual</button>
@@ -426,6 +403,19 @@
 
     window.bloquear = async function(fecha,hora){
       try{
+        const check = query(
+          collection(db,"turnos"),
+          where("fecha","==",fecha),
+          where("hora","==",hora)
+        );
+
+        const existente = await getDocs(check);
+        if(!existente.empty){
+          alert("Ese horario ya está ocupado o bloqueado");
+          await cargarAgenda();
+          return;
+        }
+
         await addDoc(collection(db,"turnos"),{
           nombre:"Bloqueado",
           telefono:"-",
@@ -444,8 +434,17 @@
     };
 
     window.crearManual = async function(fecha,hora){
-      const nombre = document.getElementById(`nombre-${hora}`).value.trim();
-      const telefono = document.getElementById(`tel-${hora}`).value.trim();
+      const sufijo = horaId(hora);
+      const nombreInput = document.getElementById(`nombre-${sufijo}`);
+      const telInput = document.getElementById(`tel-${sufijo}`);
+
+      if(!nombreInput){
+        alert("No se encontró el campo de nombre");
+        return;
+      }
+
+      const nombre = nombreInput.value.trim();
+      const telefono = telInput ? telInput.value.trim() : "";
 
       if(!nombre){
         alert("Escribí el nombre del cliente");
@@ -453,6 +452,20 @@
       }
 
       try{
+        const check = query(
+          collection(db,"turnos"),
+          where("fecha","==",fecha),
+          where("hora","==",hora)
+        );
+
+        const existente = await getDocs(check);
+
+        if(!existente.empty){
+          alert("Ese horario ya está ocupado");
+          await cargarAgenda();
+          return;
+        }
+
         await addDoc(collection(db,"turnos"),{
           nombre,
           telefono,
@@ -461,7 +474,7 @@
           creadoEn:new Date().toISOString()
         });
 
-        alert("Turno creado");
+        alert("Turno creado correctamente");
         await cargarAgenda();
         await cargarMes();
       }catch(error){
@@ -469,6 +482,8 @@
         alert("No se pudo crear el turno");
       }
     };
+
+    cargarMes();
   </script>
 </body>
 </html>
