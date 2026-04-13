@@ -23,7 +23,16 @@
     <div class="card panel">
       <aside class="sidebar">
         <img src="logo.png" class="logo logo-admin" alt="Gonzalo Masoterapia">
+
         <h3>Turnos del mes</h3>
+
+        <input type="text" id="busquedaCliente" placeholder="Buscar cliente o teléfono">
+
+        <div class="mini-card resumen-mes">
+          <span class="mini-label">Turnos del mes</span>
+          <strong id="countMes">0</strong>
+        </div>
+
         <div id="listaMes">Cargando...</div>
       </aside>
 
@@ -31,7 +40,7 @@
         <div class="main-header">
           <div>
             <h2>Agenda de turnos</h2>
-            <p class="subtitulo">Control total de reservas, bloqueos y turnos manuales</p>
+            <p class="subtitulo">Reservas, bloqueos, WhatsApp y control diario</p>
           </div>
 
           <div class="totales">
@@ -53,9 +62,17 @@
         </div>
 
         <div class="topbar">
+          <button type="button" id="btnPrevDia" class="secondary">◀ Día anterior</button>
+          <button type="button" id="btnHoy" class="secondary">Hoy</button>
+          <button type="button" id="btnNextDia" class="secondary">Día siguiente ▶</button>
+        </div>
+
+        <div class="topbar">
           <input type="date" id="fecha">
           <button type="button" id="btnVerAgenda">Ver agenda</button>
         </div>
+
+        <div id="fechaBonita" class="fecha-bonita"></div>
 
         <div id="agenda" class="agenda"></div>
       </main>

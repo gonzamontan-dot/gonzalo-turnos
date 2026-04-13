@@ -11,6 +11,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const passwordAdmin = "gonzalo123";
+const telefonoNegocio = "5492914496333";
+
 const horariosBase = ["09:30", "11:00", "14:00", "15:30"];
 const horarioExtra = "17:00";
 
@@ -18,17 +20,31 @@ const loginWrap = document.getElementById("loginWrap");
 const panelWrap = document.getElementById("panelWrap");
 const passInput = document.getElementById("pass");
 const btnLogin = document.getElementById("btnLogin");
+
 const listaMes = document.getElementById("listaMes");
 const agenda = document.getElementById("agenda");
 const fechaInput = document.getElementById("fecha");
 const btnVerAgenda = document.getElementById("btnVerAgenda");
+const btnPrevDia = document.getElementById("btnPrevDia");
+const btnHoy = document.getElementById("btnHoy");
+const btnNextDia = document.getElementById("btnNextDia");
+const busquedaCliente = document.getElementById("busquedaCliente");
+
 const countReservados = document.getElementById("countReservados");
 const countBloqueados = document.getElementById("countBloqueados");
 const countDisponibles = document.getElementById("countDisponibles");
+const countMes = document.getElementById("countMes");
+const fechaBonita = document.getElementById("fechaBonita");
+
+let cacheMes = [];
 
 function parseFechaLocal(fechaStr) {
   const [anio, mes, dia] = fechaStr.split("-").map(Number);
   return new Date(anio, mes - 1, dia);
+}
+
+function formatFechaISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function horaAMinutos(horaStr) {
@@ -37,8 +53,29 @@ function horaAMinutos(horaStr) {
 }
 
 function hoyStrLocal() {
-  const ahora = new Date();
-  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
+  return formatFechaISO(new Date());
+}
+
+function formatFechaBonita(fechaStr) {
+  const fecha = parseFechaLocal(fechaStr);
+  return fecha.toLocaleDateString("es-AR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function abrirWhatsAppCliente(telefono, nombre, fecha, hora) {
+  if (!telefono) {
+    alert("Este turno no tiene teléfono cargado");
+    return;
+  }
+
+  const limpio = telefono.replace(/\D/g, "");
+  const mensaje = `Hola ${nombre || ""}, te escribo de Gonzalo Masoterapia por tu turno del ${fecha} a las ${hora}.`;
+  const url = `https://wa.me/${limpio}?text=${encodeURIComponent(mensaje)}`;
+  window.open(url, "_blank");
 }
 
 async function limpiarTurnosViejos() {
@@ -50,7 +87,6 @@ async function limpiarTurnosViejos() {
 
   for (const item of snapshot.docs) {
     const data = item.data();
-
     if (!data.fecha) continue;
 
     const [anio, mes] = data.fecha.split("-").map(Number);
@@ -62,23 +98,92 @@ async function limpiarTurnosViejos() {
 }
 
 btnLogin.addEventListener("click", async () => {
-  if (passInput.value === passwordAdmin) {
-    loginWrap.style.display = "none";
-    panelWrap.style.display = "flex";
-
-    try {
-      await limpiarTurnosViejos();
-      await cargarMes();
-    } catch (error) {
-      console.error("Error iniciando admin:", error);
-      alert("Se abrió el panel, pero hubo un problema al cargar Firebase.");
-    }
-  } else {
+  if (passInput.value !== passwordAdmin) {
     alert("Contraseña incorrecta");
+    return;
+  }
+
+  loginWrap.style.display = "none";
+  panelWrap.style.display = "flex";
+
+  fechaInput.value = hoyStrLocal();
+
+  try {
+    await limpiarTurnosViejos();
+    await cargarMes();
+    await cargarAgenda();
+  } catch (error) {
+    console.error("Error iniciando admin:", error);
+    alert("Se abrió el panel, pero hubo un problema al cargar Firebase.");
   }
 });
 
 btnVerAgenda.addEventListener("click", cargarAgenda);
+
+btnHoy.addEventListener("click", async () => {
+  fechaInput.value = hoyStrLocal();
+  await cargarAgenda();
+});
+
+btnPrevDia.addEventListener("click", async () => {
+  if (!fechaInput.value) fechaInput.value = hoyStrLocal();
+  const d = parseFechaLocal(fechaInput.value);
+  d.setDate(d.getDate() - 1);
+  fechaInput.value = formatFechaISO(d);
+  await cargarAgenda();
+});
+
+btnNextDia.addEventListener("click", async () => {
+  if (!fechaInput.value) fechaInput.value = hoyStrLocal();
+  const d = parseFechaLocal(fechaInput.value);
+  d.setDate(d.getDate() + 1);
+  fechaInput.value = formatFechaISO(d);
+  await cargarAgenda();
+});
+
+busquedaCliente.addEventListener("input", () => {
+  renderListaMes(cacheMes);
+});
+
+function renderListaMes(items) {
+  const filtro = busquedaCliente.value.trim().toLowerCase();
+
+  const filtrados = items.filter((t) => {
+    const nombre = (t.nombre || "").toLowerCase();
+    const telefono = (t.telefono || "").toLowerCase();
+    return nombre.includes(filtro) || telefono.includes(filtro);
+  });
+
+  countMes.textContent = String(filtrados.length);
+
+  if (filtrados.length === 0) {
+    listaMes.innerHTML = '<div class="mensaje">No hay resultados</div>';
+    return;
+  }
+
+  listaMes.innerHTML = "";
+
+  filtrados.forEach((t) => {
+    const div = document.createElement("div");
+    div.className = "mes-item";
+
+    const estadoClass =
+      t.estado === "bloqueado"
+        ? "estado-bloqueado"
+        : t.estado === "realizado"
+        ? "estado-realizado"
+        : "estado-reservado";
+
+    div.innerHTML = `
+      <strong>${t.fecha}</strong><br>
+      ${t.hora} - ${t.nombre}<br>
+      📱 ${t.telefono || "-"}<br>
+      <span class="estado-pill ${estadoClass}">${t.estado || "reservado"}</span>
+    `;
+
+    listaMes.appendChild(div);
+  });
+}
 
 async function cargarMes() {
   listaMes.innerHTML = "Cargando...";
@@ -96,6 +201,7 @@ async function cargarMes() {
       if (!t.fecha) return;
 
       const [anio, mes] = t.fecha.split("-").map(Number);
+
       if (anio === anioActual && mes === mesActual && t.estado !== "cancelado") {
         items.push({ id: d.id, ...t });
       }
@@ -103,33 +209,8 @@ async function cargarMes() {
 
     items.sort((a, b) => (`${a.fecha} ${a.hora}`).localeCompare(`${b.fecha} ${b.hora}`));
 
-    if (items.length === 0) {
-      listaMes.innerHTML = '<div class="mensaje">No hay turnos cargados este mes</div>';
-      return;
-    }
-
-    listaMes.innerHTML = "";
-
-    items.forEach((t) => {
-      const div = document.createElement("div");
-      div.className = "mes-item";
-
-      const estadoClass =
-        t.estado === "bloqueado"
-          ? "estado-bloqueado"
-          : t.estado === "realizado"
-          ? "estado-realizado"
-          : "estado-reservado";
-
-      div.innerHTML = `
-        <strong>${t.fecha}</strong><br>
-        ${t.hora} - ${t.nombre}<br>
-        📱 ${t.telefono || "-"}<br>
-        <span class="estado-pill ${estadoClass}">${t.estado || "reservado"}</span>
-      `;
-
-      listaMes.appendChild(div);
-    });
+    cacheMes = items;
+    renderListaMes(cacheMes);
   } catch (error) {
     console.error("Error cargando mes:", error);
     listaMes.innerHTML = '<div class="mensaje error">No se pudieron cargar los turnos del mes</div>';
@@ -144,15 +225,16 @@ async function cargarAgenda() {
     return;
   }
 
+  fechaBonita.textContent = formatFechaBonita(fecha);
   agenda.innerHTML = '<div class="mensaje">Cargando agenda...</div>';
 
   const dia = parseFechaLocal(fecha).getDay();
 
   if (dia === 0 || dia === 6) {
     agenda.innerHTML = '<div class="mensaje">No trabajás este día</div>';
-    if (countReservados) countReservados.textContent = "0";
-    if (countBloqueados) countBloqueados.textContent = "0";
-    if (countDisponibles) countDisponibles.textContent = "0";
+    countReservados.textContent = "0";
+    countBloqueados.textContent = "0";
+    countDisponibles.textContent = "0";
     return;
   }
 
@@ -171,7 +253,6 @@ async function cargarAgenda() {
 
   for (const hora of horarios) {
     const card = document.createElement("div");
-
     const horarioPasado = fecha === hoy && horaAMinutos(hora) <= minutosActuales;
 
     if (horarioPasado) {
@@ -212,6 +293,7 @@ async function cargarAgenda() {
           <div class="manual">
             <input class="nombre-manual" placeholder="Nombre del cliente">
             <input class="tel-manual" placeholder="Teléfono del cliente">
+            <textarea class="nota-manual" placeholder="Notas del turno" rows="3"></textarea>
             <div class="acciones">
               <button type="button" class="btn-reservar-manual" data-fecha="${fecha}" data-hora="${hora}">Reservar manual</button>
               <button type="button" class="secondary btn-bloquear" data-fecha="${fecha}" data-hora="${hora}">Bloquear</button>
@@ -239,9 +321,11 @@ async function cargarAgenda() {
             <h3>${hora}</h3>
             <p><strong>${t.nombre}</strong></p>
             <p>📱 ${t.telefono || "-"}</p>
+            ${t.notas ? `<p>📝 ${t.notas}</p>` : ""}
             <div class="acciones">
               <button type="button" class="danger btn-cancelar" data-id="${t.id}">Cancelar</button>
               <button type="button" class="secondary btn-realizado" data-id="${t.id}">Realizado</button>
+              <button type="button" class="btn-whatsapp" data-tel="${t.telefono || ""}" data-nombre="${t.nombre || ""}" data-fecha="${t.fecha}" data-hora="${t.hora}">WhatsApp</button>
             </div>
           `;
         }
@@ -255,9 +339,9 @@ async function cargarAgenda() {
     agenda.appendChild(card);
   }
 
-  if (countReservados) countReservados.textContent = String(reservados);
-  if (countBloqueados) countBloqueados.textContent = String(bloqueados);
-  if (countDisponibles) countDisponibles.textContent = String(disponibles);
+  countReservados.textContent = String(reservados);
+  countBloqueados.textContent = String(bloqueados);
+  countDisponibles.textContent = String(disponibles);
 }
 
 async function bloquear(fecha, hora) {
@@ -335,7 +419,7 @@ async function marcarRealizado(id) {
   }
 }
 
-async function crearManual(fecha, hora, nombre, telefono, boton) {
+async function crearManual(fecha, hora, nombre, telefono, notas, boton) {
   if (!nombre) {
     alert("Escribí el nombre del cliente");
     return;
@@ -372,7 +456,7 @@ async function crearManual(fecha, hora, nombre, telefono, boton) {
       hora,
       estado: "reservado",
       origen: "manual",
-      notas: "",
+      notas: notas || "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
@@ -416,17 +500,30 @@ agenda.addEventListener("click", async (e) => {
     return;
   }
 
+  const btnWhatsapp = e.target.closest(".btn-whatsapp");
+  if (btnWhatsapp) {
+    abrirWhatsAppCliente(
+      btnWhatsapp.dataset.tel,
+      btnWhatsapp.dataset.nombre,
+      btnWhatsapp.dataset.fecha,
+      btnWhatsapp.dataset.hora
+    );
+    return;
+  }
+
   const btnReservar = e.target.closest(".btn-reservar-manual");
   if (btnReservar) {
     const card = btnReservar.closest(".slot-admin");
     const nombre = card.querySelector(".nombre-manual")?.value.trim() || "";
     const telefono = card.querySelector(".tel-manual")?.value.trim() || "";
+    const notas = card.querySelector(".nota-manual")?.value.trim() || "";
 
     await crearManual(
       btnReservar.dataset.fecha,
       btnReservar.dataset.hora,
       nombre,
       telefono,
+      notas,
       btnReservar
     );
   }
