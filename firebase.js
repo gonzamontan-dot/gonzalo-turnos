@@ -5,10 +5,10 @@ const firebaseConfig = {
   apiKey: "AIzaSyCbFBto-0PhnVw3sdJOhpY6NI3OZ5lkBYQ",
   authDomain: "gonzalo-turnos.firebaseapp.com",
   projectId: "gonzalo-turnos",
-  storageBucket: "gonzalo-turnos.firebasestorage.app",
+  storageBucket: "gonzalo-turnos.appspot.com",
   messagingSenderId: "739858386287",
-  appId: "1:739858386287:web:2ff5278cbf8d6dcdb12c9a",
-  measurementId: "G-4QQRSFYKD8"
+  appId: "1:739858386287:web:2ff5278cbf8d6dcdb12c9a"
+};
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
